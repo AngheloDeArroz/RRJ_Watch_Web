@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, WifiOff, Clock, Droplets, Percent } from "lucide-react";
+import { FileText, WifiOff, Clock, Droplets, Percent, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HistoricalEntry } from "@/app/dashboard/history/page";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // Fixed version - visible in both light and dark mode
 const ContainerLevelBar = ({ start, end }: { start?: number; end?: number }) => {
@@ -75,15 +77,67 @@ export function HistoricalLogsCard({
     );
   };
 
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+
+    const tableColumn = [
+      "Date",
+      "Feeding Status",
+      "Feeding Times",
+      "pH Balancer Status",
+      "pH Activity",
+      "Food Level Start",
+      "Food Level End",
+      "pH Level Start",
+      "pH Level End",
+    ];
+
+    const tableRows: (string | number)[][] = historicalData.map((entry) => [
+      entry.date,
+      entry.isAutoFeedingEnabledToday ? "Enabled" : "Disabled",
+      entry.feedingSchedules.length > 0
+        ? entry.feedingSchedules.join(", ")
+        : "No automated feeding",
+      entry.isAutoPhEnabledToday ? "Enabled" : "Disabled",
+      entry.phSolutionLevelEndOfDay !== undefined &&
+      entry.phSolutionLevelStartOfDay !== undefined
+        ? entry.phSolutionLevelEndOfDay < entry.phSolutionLevelStartOfDay
+          ? "Triggered"
+          : "Not Triggered"
+        : "N/A",
+      entry.foodLevelStartOfDay ?? "N/A",
+      entry.foodLevelEndOfDay ?? "N/A",
+      entry.phSolutionLevelStartOfDay ?? "N/A",
+      entry.phSolutionLevelEndOfDay ?? "N/A",
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [63, 81, 181] },
+    });
+
+    doc.save("historical_logs.pdf");
+  };
+
   return (
     <Card className={cn("shadow-lg", className)} {...props}>
-      <CardHeader>
+      <CardHeader className="relative">
         <CardTitle className="font-headline flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" /> Daily Logs
         </CardTitle>
         <CardDescription>
           A day-by-day record of system activities.
         </CardDescription>
+
+        {/* Download button positioned top-right */}
+        <button
+          className="absolute top-3 right-3 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded bg-primary text-white hover:bg-primary/90"
+          onClick={downloadPDF}
+        >
+          <Download className="w-4 h-4" /> Download PDF
+        </button>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -116,7 +170,6 @@ export function HistoricalLogsCard({
           {!isLoading && historicalData.length > 0 && (
             <div className="space-y-4 py-2">
               {historicalData.map((entry) => {
-                //  Compute if pH balancer was triggered (based on level decrease)
                 const wasPhTriggered =
                   entry.phSolutionLevelStartOfDay !== undefined &&
                   entry.phSolutionLevelEndOfDay !== undefined &&
@@ -136,8 +189,7 @@ export function HistoricalLogsCard({
                           Feeding:
                         </h5>
                         <p className="text-xs text-muted-foreground">
-                          System Status:{" "}
-                          {renderStatus(entry.isAutoFeedingEnabledToday)}
+                          System Status: {renderStatus(entry.isAutoFeedingEnabledToday)}
                         </p>
                         {entry.feedingSchedules.length > 0 ? (
                           <p className="text-xs text-muted-foreground">
@@ -157,8 +209,7 @@ export function HistoricalLogsCard({
                           pH Balancer:
                         </h5>
                         <p className="text-xs text-muted-foreground">
-                          System Status:{" "}
-                          {renderStatus(entry.isAutoPhEnabledToday)}
+                          System Status: {renderStatus(entry.isAutoPhEnabledToday)}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Activity:{" "}
@@ -187,18 +238,14 @@ export function HistoricalLogsCard({
                         </h5>
                         <div className="space-y-2">
                           <div className="grid grid-cols-[80px_1fr] items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              Food:
-                            </span>
+                            <span className="text-xs text-muted-foreground">Food:</span>
                             <ContainerLevelBar
                               start={entry.foodLevelStartOfDay}
                               end={entry.foodLevelEndOfDay}
                             />
                           </div>
                           <div className="grid grid-cols-[80px_1fr] items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              pH Solution:
-                            </span>
+                            <span className="text-xs text-muted-foreground">pH Solution:</span>
                             <ContainerLevelBar
                               start={entry.phSolutionLevelStartOfDay}
                               end={entry.phSolutionLevelEndOfDay}
