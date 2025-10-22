@@ -40,13 +40,6 @@ export function SidebarNav() {
       {/* Optional section divider for future expansion */}
       <div className="flex-grow border-t border-border/40 mt-6" />
 
-      {/* You can add footer options like Profile or Logout later */}
-      {/* <SidebarMenuItem>
-        <SidebarMenuButton className="text-sm text-muted-foreground hover:text-foreground">
-          <User className="w-5 h-5" />
-          <span>Profile</span>
-        </SidebarMenuButton>
-      </SidebarMenuItem> */}
     </div>
   );
 }

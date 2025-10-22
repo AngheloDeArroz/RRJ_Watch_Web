@@ -101,7 +101,7 @@ export default function LandingPage() {
             Intelligent Aquarium Automation
           </h2>
           <p className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-10">
-            RRJ Watch is a proof-of-concept prototype that connects an IoT device in your aquarium to a powerful cloud dashboard. It provides full automation for critical tasks like feeding and pH balancing, while offering real-time data monitoring to ensure a thriving aquatic ecosystem. Access your dashboard to take control.
+           RRJ Watch connects your aquarium’s IoT devices to a cloud-based dashboard, enabling full automation of essential tasks such as feeding and pH balancing, while providing real-time monitoring to ensure a healthy and thriving aquatic ecosystem.
           </p>
            <Button onClick={() => router.push("/login")} size="lg" className="text-base lg:text-lg">
             Access Your Dashboard
@@ -174,8 +174,8 @@ export default function LandingPage() {
 
       <footer id="contact" className="py-6 border-t mt-auto bg-background/50 scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs sm:text-sm text-muted-foreground">
-          <p>Contact RRJ Watch:</p>
-          <p>Email: <a href="mailto:contact@rrjwatch.com" className="text-primary hover:underline">contact@rrjwatch.com</a> | Phone: +1 (555) 123-4567</p>
+          <p>Contact RRJ Aquatique:</p>
+          <p>Email: <a href="mailto:rrjaquatique@gmail.com" className="text-primary hover:underline">rrjaquatique@gmail.com</a> | Phone: (043) 784 2313</p>
           {currentYear && <p className="mt-2">&copy; {currentYear} RRJ Watch. All rights reserved.</p>}
         </div>
       </footer>
