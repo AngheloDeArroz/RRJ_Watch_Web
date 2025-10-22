@@ -47,8 +47,7 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
     ];
   }, [historicalData]);
 
-  // Evaluate metric status
-  const evaluateMetric = (label: string, value: string): { status: "good" | "moderate" | "bad" | "nodata"; color: string; text: string } => {
+  const evaluateMetric = (label: string, value: string) => {
     const num = parseFloat(value);
     if (isNaN(num)) return { status: "nodata", color: "text-gray-400", text: "--" };
 
@@ -82,9 +81,9 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
 
       <CardContent>
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="p-4 rounded-lg bg-secondary/40 flex flex-col items-center justify-center space-y-2">
+              <div key={i} className="flex-1 p-4 rounded-lg bg-secondary/40 flex flex-col items-center justify-center space-y-2">
                 <Skeleton className="h-6 w-24 mb-1" />
                 <Skeleton className="h-8 w-16" />
                 <Skeleton className="h-4 w-20" />
@@ -94,11 +93,11 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
         ) : error ? (
           <p className="text-sm text-destructive flex items-center gap-2">{error}</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex gap-4">
             {averages.map(avg => {
               const evalMetric = evaluateMetric(avg.label, avg.value);
               return (
-                <div key={avg.label} className="p-4 rounded-lg bg-secondary/40 text-center shadow-inner flex flex-col items-center">
+                <div key={avg.label} className="flex-1 p-4 rounded-lg bg-secondary/40 text-center shadow-inner flex flex-col items-center">
                   <div className="flex justify-center items-center gap-2 mb-2 text-muted-foreground">
                     <avg.Icon className="w-4 h-4" />
                     <h4 className="text-sm font-medium">{avg.label}</h4>
@@ -107,7 +106,6 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
                     {avg.value}
                     <span className="text-base font-normal text-muted-foreground ml-1">{avg.unit}</span>
                   </p>
-                  {/* Evaluation badge */}
                   <p className={cn("mt-1 text-sm font-medium", evalMetric.color)}>
                     {evalMetric.text}
                   </p>

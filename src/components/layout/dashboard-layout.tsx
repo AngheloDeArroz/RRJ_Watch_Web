@@ -85,9 +85,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Main Dashboard Area */}
         <div className="flex flex-col flex-1 w-full h-screen bg-background">
-          {/* Header for Mobile */}
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/90 backdrop-blur-md px-4 sm:hidden">
-            <SidebarTrigger className="md:hidden" />
+          {/* Mobile Header - only visible when sidebar is hidden */}
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/90 backdrop-blur-md px-2 sm:px-4 md:hidden">
+            <SidebarTrigger />
             <div className="flex items-center gap-2">
               <Image
                 src="/images/logo.png"
@@ -101,8 +101,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 w-full h-full overflow-y-auto overflow-x-hidden px-6 sm:px-8 lg:px-10 py-6 sm:py-8 transform transition-all duration-300 ease-in-out text-[clamp(0.9rem,1vw,1rem)]">
-            <div className="w-full flex flex-col gap-6 scale-[0.95] sm:scale-100 xl:scale-105 2xl:scale-110 transition-transform duration-300 ease-in-out pt-6 pb-10 px-2 sm:px-4">
+          <main className="flex-1 w-full h-full overflow-y-auto overflow-x-hidden px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 transform transition-all duration-300 ease-in-out text-[clamp(0.9rem,1vw,1rem)]">
+            <div className="w-full flex flex-col gap-4 sm:gap-6 pt-1 sm:pt-4 pb-2 sm:pb-6 px-1 sm:px-3">
               {children}
             </div>
           </main>

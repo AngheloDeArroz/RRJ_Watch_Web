@@ -42,7 +42,6 @@ const PARAMETER_RANGES = {
 export function WaterQualityCard({ className, ...props }: WaterQualityCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [tempValue, setTempValue] = useState<number | null>(null);
   const [turbidityValue, setTurbidityValue] = useState<number | null>(null);
   const [phValue, setPhValue] = useState<number | null>(null);
@@ -86,7 +85,7 @@ export function WaterQualityCard({ className, ...props }: WaterQualityCardProps)
           ]);
 
           if (last) {
-            const online = new Date().getTime() - last.toDate().getTime() < 5 * 60 * 1000; // 5 min threshold
+            const online = new Date().getTime() - last.toDate().getTime() < 5 * 60 * 1000;
             setIsOnline(online);
           } else {
             setIsOnline(false);
@@ -136,13 +135,12 @@ export function WaterQualityCard({ className, ...props }: WaterQualityCardProps)
   const aquariumImage = waterStatus.isSafe
     ? "/images/healthy_aquarium.gif"
     : "/images/unhealthy_aquarium.gif";
-
   const imageHint = waterStatus.isSafe ? "healthy aquarium" : "unhealthy aquarium";
 
   return (
     <Card
       className={cn(
-        "shadow-lg overflow-hidden relative aspect-video w-full sm:aspect-[2.4/1]",
+        "shadow-lg overflow-hidden relative w-full aspect-video sm:aspect-[2.4/1]",
         className
       )}
       {...props}
@@ -171,20 +169,22 @@ export function WaterQualityCard({ className, ...props }: WaterQualityCardProps)
               )}
             />
 
-            <div className="relative z-20 flex flex-col justify-between h-full p-4 sm:p-6 text-white">
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                <div className="flex-shrink-0 bg-black/40 backdrop-blur-sm px-3 py-2 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="font-headline text-lg sm:text-xl">
+            <div className="relative z-20 flex flex-col justify-between h-full p-2 sm:p-4 md:p-6 text-white">
+              {/* MAIN FLEX ROW */}
+              <div className="flex flex-row justify-between items-start gap-2 sm:gap-4 flex-nowrap">
+                {/* Left Info Box */}
+                <div className="flex-shrink-0 bg-black/40 backdrop-blur-sm px-2 sm:px-3 py-1 sm:py-2 rounded-lg w-auto min-w-[100px]">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <CardTitle className="font-headline text-sm sm:text-base md:text-lg">
                       {isOnline ? "Live Water Quality" : "Last Sensor Data"}
                     </CardTitle>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button className="focus:outline-none">
-                          <Info className="w-4 h-4 text-gray-300 hover:text-white transition-colors" />
+                          <Info className="w-3 h-3 sm:w-4 sm:h-4 text-gray-300 hover:text-white transition-colors" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent className="bg-background/80 backdrop-blur-sm text-foreground border-border">
+                      <TooltipContent className="bg-background/80 backdrop-blur-sm text-foreground border-border max-w-xs">
                         <div className="text-sm">
                           <h4 className="font-bold mb-2">Acceptable Parameter Ranges</h4>
                           <ul className="list-disc list-inside space-y-1">
@@ -202,7 +202,7 @@ export function WaterQualityCard({ className, ...props }: WaterQualityCardProps)
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <CardDescription className="text-gray-200 text-xs sm:text-sm">
+                  <CardDescription className="text-gray-200 text-[10px] sm:text-xs md:text-sm">
                     {isOnline
                       ? "Real-time sensor readings from your system."
                       : lastUpdated
@@ -211,41 +211,41 @@ export function WaterQualityCard({ className, ...props }: WaterQualityCardProps)
                   </CardDescription>
                 </div>
 
-                <div className="p-3 space-y-2 bg-black/40 backdrop-blur-sm rounded-lg shadow-lg w-auto self-end sm:self-start">
+                {/* Right Data Box */}
+                <div className="flex-shrink bg-black/40 backdrop-blur-sm rounded-lg shadow-lg p-2 sm:p-3 w-auto min-w-[120px]">
                   {error && (
-                    <p className="text-xs text-red-300 mb-2 flex items-center gap-2">
-                      <WifiOff className="w-4 h-4" />
+                    <p className="text-[9px] sm:text-xs text-red-300 mb-1 flex items-center gap-1 sm:gap-2 break-words">
+                      <WifiOff className="w-3 h-3 sm:w-4 sm:h-4" />
                       {error}
                     </p>
                   )}
                   {waterQualityData.map((param) => (
-                    <div key={param.id} className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <param.Icon className="w-4 h-4 text-blue-300" />
-                        <p className="text-xs font-medium text-gray-100">{param.label}</p>
+                    <div key={param.id} className="flex items-center justify-between gap-1 sm:gap-4">
+                      <div className="flex items-center gap-1">
+                        <param.Icon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-300" />
+                        <p className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-100">{param.label}</p>
                       </div>
-                      <p className="text-sm font-bold text-white">
+                      <p className="text-sm sm:text-base md:text-lg font-bold text-white">
                         {param.value}
-                        {param.unit && <span className="text-xs ml-1 font-medium">{param.unit}</span>}
+                        {param.unit && <span className="text-[9px] sm:text-xs md:text-sm ml-1 font-medium">{param.unit}</span>}
                       </p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {!isLoading && (
-                <div
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1 text-xs rounded-full font-medium self-start mt-3 backdrop-blur-sm",
-                    waterStatus.isSafe
-                      ? "bg-blue-500/80 text-white"
-                      : "bg-red-600/80 text-white"
-                  )}
-                >
-                  <waterStatus.Icon className="w-3 h-3" />
-                  <span>{waterStatus.message}</span>
-                </div>
-              )}
+              {/* Water Status */}
+              <div
+                className={cn(
+                  "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 text-[10px] sm:text-xs rounded-full font-medium self-start mt-2 sm:mt-3 backdrop-blur-sm",
+                  waterStatus.isSafe
+                    ? "bg-blue-500/80 text-white"
+                    : "bg-red-600/80 text-white"
+                )}
+              >
+                <waterStatus.Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="text-[10px] sm:text-xs md:text-sm">{waterStatus.message}</span>
+              </div>
             </div>
           </>
         )}

@@ -125,71 +125,65 @@ export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCard
     };
   }, []);
 
-const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number>();
-  const phaseRef = useRef(0); // single phase for uniform wave
+  const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const requestRef = useRef<number>();
+    const phaseRef = useRef(0);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    const amplitude = 6; // uniform wave height
-    const wavelength = 120; // smooth width
-    const speed = 0.04; // slower movement
-
-    const draw = () => {
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.clearRect(0, 0, width, height);
 
-      const waterLevel = height * (1 - percentage / 100);
+      const width = canvas.width;
+      const height = canvas.height;
+      const amplitude = 6;
+      const wavelength = 120;
+      const speed = 0.04;
 
-      ctx.beginPath();
-      for (let x = 0; x <= width; x++) {
-        const y = waterLevel + Math.sin((x / wavelength) * 2 * Math.PI + phaseRef.current) * amplitude;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
+      const draw = () => {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, width, height);
+        const waterLevel = height * (1 - percentage / 100);
 
-      // Close the wave path to bottom
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
-      ctx.closePath();
+        ctx.beginPath();
+        for (let x = 0; x <= width; x++) {
+          const y = waterLevel + Math.sin((x / wavelength) * 2 * Math.PI + phaseRef.current) * amplitude;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
 
-      ctx.fillStyle = color;
-      ctx.fill();
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
 
-      phaseRef.current += speed; // animate
+        ctx.fillStyle = color;
+        ctx.fill();
 
-      requestRef.current = requestAnimationFrame(draw);
-    };
+        phaseRef.current += speed;
+        requestRef.current = requestAnimationFrame(draw);
+      };
 
-    draw();
-    return () => cancelAnimationFrame(requestRef.current!);
-  }, [color, percentage]);
+      draw();
+      return () => cancelAnimationFrame(requestRef.current!);
+    }, [color, percentage]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={96}
-      height={192}
-      style={{
-        borderRadius: "2rem",
-        width: "96px",
-        height: "192px",
-        display: "block",
-      }}
-    />
-  );
-};
+    return (
+      <canvas
+        ref={canvasRef}
+        width={96}
+        height={192}
+        style={{
+          borderRadius: "2rem",
+          width: "96px",
+          height: "192px",
+          display: "block",
+        }}
+      />
+    );
+  };
 
-
-  /** ------------------------- Gauge Component ------------------------- */
   const Gauge = ({
     level,
     label,
@@ -214,7 +208,6 @@ const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
           </div>
         </div>
 
-        {/* Container with gray border */}
         <div className="relative w-24 h-48 rounded-[2rem] overflow-hidden shadow-md border-4 border-gray-400 bg-slate-50">
           <Wave color={color} percentage={percentage} />
         </div>
@@ -234,7 +227,6 @@ const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
     );
   };
 
-  /** ------------------------- Render ------------------------- */
   return (
     <Card className={cn("shadow-lg bg-card/40 backdrop-blur-md", className)} {...props}>
       <CardHeader>
@@ -258,7 +250,7 @@ const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 justify-items-center">
+          <div className="grid grid-cols-2 gap-4 justify-items-center">
             {[...Array(2)].map((_, i) => (
               <div key={i} className="flex flex-col items-center gap-3 w-full">
                 <Skeleton className="h-6 w-20" />
@@ -269,7 +261,7 @@ const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-center justify-items-center">
+          <div className="grid grid-cols-2 gap-4 text-center justify-items-center">
             <Gauge
               level={foodLevel}
               label="Food Container"

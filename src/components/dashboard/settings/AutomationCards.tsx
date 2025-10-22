@@ -68,10 +68,7 @@ const scheduleFormSchema = z.object({
 });
 type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
 
-export function AutomationControlCard({
-  className,
-  ...props
-}: ComponentProps<typeof Card>) {
+export function AutomationControlCard({ className, ...props }: ComponentProps<typeof Card>) {
   const { toast } = useToast();
 
   const [feedingLoading, setFeedingLoading] = useState(true);
@@ -82,14 +79,12 @@ export function AutomationControlCard({
     { id: "feedingTime2", time: "", gramsId: "feedingGrams2", grams: 0 },
   ]);
   const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
-  const [feedingLastTriggered, setFeedingLastTriggered] =
-    useState<Timestamp | null>(null);
+  const [feedingLastTriggered, setFeedingLastTriggered] = useState<Timestamp | null>(null);
 
   const [phLoading, setPhLoading] = useState(true);
   const [phError, setPhError] = useState<string | null>(null);
   const [phEnabled, setPhEnabled] = useState(false);
-  const [phLastTriggered, setPhLastTriggered] =
-    useState<Timestamp | null>(null);
+  const [phLastTriggered, setPhLastTriggered] = useState<Timestamp | null>(null);
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
@@ -229,10 +224,10 @@ export function AutomationControlCard({
   };
 
   return (
-    <div className="flex-1 w-full h-full p-4 md:p-6">
+    <div className="w-full">
       <Card
         className={cn(
-          "flex flex-col h-full bg-card/40 backdrop-blur-md rounded-2xl shadow-md p-6",
+          "w-full h-full bg-card/40 backdrop-blur-md rounded-2xl shadow-md p-6",
           "text-sm md:text-base lg:text-lg xl:text-xl transition-all duration-300",
           className
         )}
@@ -249,9 +244,9 @@ export function AutomationControlCard({
         </CardHeader>
 
         <CardContent className="flex-1 overflow-y-auto pr-2">
-          <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex flex-col md:flex-row gap-6 w-full">
             {/* Feeding Section */}
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <h3 className="text-base md:text-lg font-semibold flex items-center gap-2 mb-2">
                 <Settings className="w-5 h-5 text-primary" /> Automated Feeding
               </h3>
@@ -322,17 +317,15 @@ export function AutomationControlCard({
 
               {feedingLastTriggered && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  Last triggered:{" "}
-                  {format(feedingLastTriggered.toDate(), "PPpp")}
+                  Last triggered: {format(feedingLastTriggered.toDate(), "PPpp")}
                 </p>
               )}
             </div>
 
-            {/* Vertical Separator */}
             <div className="hidden md:block w-px bg-border" />
 
             {/* pH Balancer Section */}
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <h3 className="text-base md:text-lg font-semibold flex items-center gap-2 mb-2">
                 <Droplets className="w-5 h-5 text-primary" /> pH Balancer
               </h3>
@@ -375,10 +368,7 @@ export function AutomationControlCard({
         </CardContent>
       </Card>
 
-      <Dialog
-        open={!!editingSchedule}
-        onOpenChange={(o) => !o && setEditingSchedule(null)}
-      >
+      <Dialog open={!!editingSchedule} onOpenChange={(o) => !o && setEditingSchedule(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Feeding Schedule</DialogTitle>

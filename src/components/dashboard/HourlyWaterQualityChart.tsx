@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, type ComponentProps, useMemo } from "react";
@@ -114,26 +113,39 @@ export function HourlyWaterQualityChart({ className, ...props }: HourlyWaterQual
     };
   }, [chartData]);
 
-
   return (
     <Card className={cn("shadow-lg", className)} {...props}>
       <CardHeader>
         <CardTitle className="font-headline">Hourly Trends (Last 24h)</CardTitle>
         <CardDescription>A summary of water quality changes over the past day.</CardDescription>
         {!isLoading && chartData.length > 0 && (
-          <div className="pt-2 text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-            {averages.temperature && <span>Avg. Temp: <strong className="font-semibold text-foreground">{averages.temperature}°C</strong></span>}
-            {averages.ph && <span>Avg. pH: <strong className="font-semibold text-foreground">{averages.ph}</strong></span>}
-            {averages.turbidity && <span>Avg. Turbidity: <strong className="font-semibold text-foreground">{averages.turbidity} NTU</strong></span>}
+          <div className="pt-2 flex gap-2 text-[0.75rem] sm:text-xs text-muted-foreground">
+            {averages.temperature && (
+              <div className="flex-1 min-w-0 text-center truncate">
+                Avg. °C: <strong className="font-semibold text-foreground">{averages.temperature}</strong>
+              </div>
+            )}
+            {averages.ph && (
+              <div className="flex-1 min-w-0 text-center truncate">
+                Avg. pH: <strong className="font-semibold text-foreground">{averages.ph}</strong>
+              </div>
+            )}
+            {averages.turbidity && (
+              <div className="flex-1 min-w-0 text-center truncate">
+                Avg. NTU: <strong className="font-semibold text-foreground">{averages.turbidity}</strong>
+              </div>
+            )}
           </div>
         )}
       </CardHeader>
       <CardContent>
         {error && <p className="text-sm text-destructive mb-2 flex items-center gap-2"><AlertTriangle className="w-4 h-4"/>{error}</p>}
-        {isLoading ? <Skeleton className="h-[300px] w-full" /> : 
-         (chartData.length > 0 ? (
+        {isLoading ? (
+          <Skeleton className="h-[300px] w-full" />
+        ) : (
+          chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[300px] w-full text-xs sm:text-sm">
-                <LineChart accessibilityLayer data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+              <LineChart accessibilityLayer data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis dataKey="timeLabel" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={40}/>
                 <YAxis tickLine={false} axisLine={false} tickMargin={8} />
@@ -142,12 +154,12 @@ export function HourlyWaterQualityChart({ className, ...props }: HourlyWaterQual
                 <Line dataKey="temperature" type="monotone" stroke="var(--color-temperature)" strokeWidth={2} dot={false} name="Temp (°C)" connectNulls/>
                 <Line dataKey="ph" type="monotone" stroke="var(--color-ph)" strokeWidth={2} dot={false} name="pH" connectNulls/>
                 <Line dataKey="turbidity" type="monotone" stroke="var(--color-turbidity)" strokeWidth={2} dot={false} name="Turbidity (NTU)" connectNulls/>
-                </LineChart>
+              </LineChart>
             </ChartContainer>
-            ) : (
+          ) : (
             <p className="text-center text-muted-foreground py-10">Insufficient data for chart.</p>
-         ))
-        }
+          )
+        )}
       </CardContent>
     </Card>
   );
