@@ -1,23 +1,45 @@
 "use client";
 
-import { useState, useEffect, type ComponentProps } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect, useRef, type ComponentProps } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Drumstick, FlaskConical, WifiOff, CalendarClock, AlertCircle } from "lucide-react";
+import {
+  Drumstick,
+  FlaskConical,
+  WifiOff,
+  CalendarClock,
+  AlertCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, type FirestoreError } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  collection,
+  query,
+  orderBy,
+  limit,
+} from "firebase/firestore";
 
 type ContainerLevelsCardProps = ComponentProps<typeof Card>;
 
 export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [foodLevel, setFoodLevel] = useState(0);
-  const [phSolutionLevel, setPhSolutionLevel] = useState(0);
+  const [foodLevel, setFoodLevel] = useState<number>(0);
+  const [phSolutionLevel, setPhSolutionLevel] = useState<number>(0);
   const [foodDaysRemaining, setFoodDaysRemaining] = useState<number | null>(null);
   const [phDaysRemaining, setPhDaysRemaining] = useState<number | null>(null);
   const [calculationError, setCalculationError] = useState<string | null>(null);
+
+  const latestLevelsRef = useRef<{ foodLevel: number; phSolutionLevel: number } | null>(null);
+  const recentHistoryRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!db) {
@@ -27,174 +49,200 @@ export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCard
     }
 
     const levelsDocRef = doc(db, "container-levels", "status");
-    const unsubscribeLevels = onSnapshot(
-      levelsDocRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setFoodLevel(data.foodLevel ?? 0);
-          setPhSolutionLevel(data.phSolutionLevel ?? 0);
-          setError(null);
-        } else {
-          setError("Container levels not found.");
-        }
-      },
-      (e: FirestoreError) => {
-        console.error("Error fetching container levels:", e);
-        let message = "Failed to fetch container levels.";
-        if (e.code === "unavailable") message = "You are offline. Levels may be out of sync.";
-        setError(message);
-        setIsLoading(false);
+    const historyCollectionRef = collection(db, "water-history");
+    const historyQuery = query(historyCollectionRef, orderBy("timestamp", "desc"), limit(7));
+
+    const safeDelta = (start: any, end: any) => {
+      if (typeof start === "number" && typeof end === "number" && start > end) {
+        return start - end;
       }
-    );
+      return 0;
+    };
 
-    const calculateEstimates = async () => {
+    const recalcFromRefs = () => {
       try {
-        const levelsSnap = await getDocs(collection(db, "container-levels"));
-        const currentData = levelsSnap.docs.find((d) => d.id === "status")?.data();
-        const currentFoodLevel = currentData?.foodLevel ?? 0;
-        const currentPhLevel = currentData?.phSolutionLevel ?? 0;
-
-        const historyCollectionRef = collection(db, "water-history");
-        const q = query(historyCollectionRef, orderBy("timestamp", "desc"), limit(1));
-        const historySnapshot = await getDocs(q);
-
-        if (historySnapshot.empty) {
-          throw new Error("No historical data to calculate consumption.");
-        }
-
-        const latestHistory = historySnapshot.docs[0].data();
-
-        const foodStart = latestHistory.foodLevelStartOfDay;
-        const foodEnd = latestHistory.foodLevelEndOfDay;
-        if (typeof foodStart === "number" && typeof foodEnd === "number") {
-          const dailyFoodConsumption = foodStart - foodEnd;
-          if (dailyFoodConsumption > 0) {
-            setFoodDaysRemaining(Math.floor(currentFoodLevel / dailyFoodConsumption));
-          } else {
-            setFoodDaysRemaining(Infinity);
-          }
-        } else {
+        const levels = latestLevelsRef.current;
+        const history = recentHistoryRef.current;
+        if (!levels || !history.length) {
           setFoodDaysRemaining(null);
-        }
-
-        const phStart = latestHistory.phSolutionLevelStartOfDay;
-        const phEnd = latestHistory.phSolutionLevelEndOfDay;
-        if (typeof phStart === "number" && typeof phEnd === "number") {
-          const dailyPhConsumption = phStart - phEnd;
-          if (dailyPhConsumption > 0) {
-            setPhDaysRemaining(Math.floor(currentPhLevel / dailyPhConsumption));
-          } else {
-            setPhDaysRemaining(Infinity);
-          }
-        } else {
           setPhDaysRemaining(null);
+          return;
         }
 
-        setCalculationError(null);
-      } catch (err: any) {
-        console.error("Error calculating supply estimates:", err);
-        let message = "Could not calculate estimates.";
-        if (err.code === "unavailable") message = "Offline, cannot calculate usage.";
-        else if (err.message) message = err.message;
-        setCalculationError(message);
-      } finally {
-        setIsLoading(false);
+        let totalFoodUsed = 0;
+        let totalPhUsed = 0;
+        let validFoodDays = 0;
+        let validPhDays = 0;
+
+        for (const entry of history) {
+          const fUsed = safeDelta(entry.foodLevelStartOfDay, entry.foodLevelEndOfDay);
+          if (fUsed > 0) {
+            totalFoodUsed += fUsed;
+            validFoodDays++;
+          }
+          const pUsed = safeDelta(entry.phSolutionLevelStartOfDay, entry.phSolutionLevelEndOfDay);
+          if (pUsed > 0) {
+            totalPhUsed += pUsed;
+            validPhDays++;
+          }
+        }
+
+        const avgFood = validFoodDays ? totalFoodUsed / validFoodDays : 0;
+        const avgPh = validPhDays ? totalPhUsed / validPhDays : 0;
+
+        const f = levels.foodLevel ?? 0;
+        const p = levels.phSolutionLevel ?? 0;
+
+        setFoodDaysRemaining(avgFood ? Math.max(0, Math.round(f / avgFood)) : null);
+        setPhDaysRemaining(avgPh ? Math.max(0, Math.round(p / avgPh)) : null);
+      } catch (err) {
+        console.error(err);
       }
     };
 
-    calculateEstimates();
-    return () => unsubscribeLevels();
+    const unsub1 = onSnapshot(levelsDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const fl = Number(data.foodLevel ?? 0);
+        const ph = Number(data.phSolutionLevel ?? 0);
+        setFoodLevel(fl);
+        setPhSolutionLevel(ph);
+        latestLevelsRef.current = { foodLevel: fl, phSolutionLevel: ph };
+        recalcFromRefs();
+        setError(null);
+      } else setError("Container data not found.");
+      setIsLoading(false);
+    });
+
+    const unsub2 = onSnapshot(historyQuery, (snap) => {
+      recentHistoryRef.current = snap.docs.map((d) => d.data());
+      recalcFromRefs();
+    });
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, []);
 
-  const getLevelColor = (level: number) => {
-    if (level > 50) return "fill-green-500/80";
-    if (level > 20) return "fill-yellow-500/80";
-    return "fill-red-500/80";
-  };
+const Wave = ({ color, percentage }: { color: string; percentage: number }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const requestRef = useRef<number>();
+  const phaseRef = useRef(0); // single phase for uniform wave
 
-  const getPhLevelColor = (level: number) => {
-    if (level > 50) return "fill-sky-500/80";
-    if (level > 20) return "fill-indigo-500/80";
-    return "fill-purple-500/80";
-  };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const amplitude = 6; // uniform wave height
+    const wavelength = 120; // smooth width
+    const speed = 0.04; // slower movement
+
+    const draw = () => {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, width, height);
+
+      const waterLevel = height * (1 - percentage / 100);
+
+      ctx.beginPath();
+      for (let x = 0; x <= width; x++) {
+        const y = waterLevel + Math.sin((x / wavelength) * 2 * Math.PI + phaseRef.current) * amplitude;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      // Close the wave path to bottom
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      phaseRef.current += speed; // animate
+
+      requestRef.current = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => cancelAnimationFrame(requestRef.current!);
+  }, [color, percentage]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={96}
+      height={192}
+      style={{
+        borderRadius: "2rem",
+        width: "96px",
+        height: "192px",
+        display: "block",
+      }}
+    />
+  );
+};
+
+
+  /** ------------------------- Gauge Component ------------------------- */
   const Gauge = ({
     level,
-    colorClass,
     label,
     icon: Icon,
     daysRemaining,
+    theme,
   }: {
     level: number;
-    colorClass: string;
     label: string;
     icon: React.ElementType;
     daysRemaining: number | null;
+    theme: "orange" | "blue";
   }) => {
-    const fillHeight = 140 * (level / 100);
-    const yOffset = 35 + (140 - fillHeight);
-
+    const percentage = Math.min(Math.max(level, 0), 100);
+    const color = theme === "orange" ? "#fb923c" : "#38bdf8";
     return (
-      <div className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Icon className="w-5 h-5 text-muted-foreground" />
-          <p className="text-lg font-bold text-foreground">{level}%</p>
+      <div className="flex flex-col items-center gap-4 w-full">
+        <div className="flex flex-col items-center gap-1 h-10">
+          <div className="flex items-center gap-2">
+            <Icon className="w-5 h-5 text-muted-foreground" />
+            <p className="text-lg font-bold text-foreground">{percentage}%</p>
+          </div>
         </div>
 
-        {/* Bottle with simple loading bar fill */}
-        <div className="relative w-28 h-48">
-          <svg viewBox="0 0 100 180" className="w-full h-full drop-shadow-md">
-            <defs>
-              <clipPath id={`bottle-clip-${label}`}>
-                <path d="M 25 25 L 25 35 Q 25 40 20 45 V 175 H 80 V 45 Q 75 40 75 35 L 75 25 Z" />
-              </clipPath>
-            </defs>
-
-            {/* Background bottle outline */}
-            <path
-              d="M 25 25 L 25 35 Q 25 40 20 45 V 175 H 80 V 45 Q 75 40 75 35 L 75 25 Z"
-              fill="none"
-              stroke="hsl(var(--border))"
-              strokeWidth="2"
-            />
-
-            {/* Fill area */}
-            <g clipPath={`url(#bottle-clip-${label})`}>
-              <rect
-                x="20"
-                y={yOffset}
-                width="60"
-                height={fillHeight}
-                className={cn(colorClass, "transition-all duration-700 ease-in-out rounded-t-sm")}
-              />
-            </g>
-          </svg>
+        {/* Container with gray border */}
+        <div className="relative w-24 h-48 rounded-[2rem] overflow-hidden shadow-md border-4 border-gray-400 bg-slate-50">
+          <Wave color={color} percentage={percentage} />
         </div>
 
-        {/* Label & remaining days */}
         <p className="text-sm font-medium text-foreground">{label}</p>
-        <div className="p-2 rounded-lg bg-secondary/40 shadow-inner w-full text-center">
+
+        <div className="p-2 rounded-lg w-full text-center bg-secondary/40 shadow-inner">
           <div className="flex justify-center items-center gap-1.5 mb-1 text-muted-foreground">
             <CalendarClock className="w-3 h-3" />
             <h4 className="text-xs font-medium">Est. Remaining</h4>
           </div>
           <div className="text-xl font-bold text-foreground">
-            {daysRemaining === null ? "?" : daysRemaining === Infinity ? "∞" : daysRemaining}
+            {daysRemaining === null ? "Not consumed" : `${daysRemaining} days`}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {daysRemaining !== null && daysRemaining !== Infinity ? "days" : "Not consumed"}
-          </p>
         </div>
       </div>
     );
   };
 
+  /** ------------------------- Render ------------------------- */
   return (
-    <Card className={cn("shadow-lg", className)} {...props}>
+    <Card className={cn("shadow-lg bg-card/40 backdrop-blur-md", className)} {...props}>
       <CardHeader>
-        <CardTitle className="font-headline">Container Levels & Supply</CardTitle>
-        <CardDescription>Live status and estimated days left for supplies.</CardDescription>
+        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+          <FlaskConical className="w-5 h-5 text-primary" />
+          Container Levels & Supply
+        </CardTitle>
+        <CardDescription>Live status and realtime consumption estimates.</CardDescription>
       </CardHeader>
       <CardContent className="pt-4">
         {error && (
@@ -224,17 +272,17 @@ export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCard
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-center justify-items-center">
             <Gauge
               level={foodLevel}
-              colorClass={getLevelColor(foodLevel)}
               label="Food Container"
               icon={Drumstick}
               daysRemaining={foodDaysRemaining}
+              theme="orange"
             />
             <Gauge
               level={phSolutionLevel}
-              colorClass={getPhLevelColor(phSolutionLevel)}
               label="pH Solution"
               icon={FlaskConical}
               daysRemaining={phDaysRemaining}
+              theme="blue"
             />
           </div>
         )}

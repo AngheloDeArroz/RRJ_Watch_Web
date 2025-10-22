@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { AutomatedFeedingCard } from "@/components/dashboard/settings/AutomatedFeedingCard";
-import { PhBalancerCard } from "@/components/dashboard/settings/PhBalancerCard";
+import { AutomatedFeedingCard, PhBalancerCard } from "@/components/dashboard/settings/AutomationCards";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 
