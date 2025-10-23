@@ -14,7 +14,7 @@ const navItems = [
 ];
 
 // Replace this with your app download link
-const appDownloadLink = 'https://your-app-download-link.com';
+const appDownloadLink = 'https://drive.google.com/drive/folders/1JjX9Y-qu2S-sEFrhOLbc1rSq-mdzM9tQ?usp=drive_link';
 // Replace this with your QR code image URL
 const qrCodeImageUrl = '/images/qr-code.png';
 
