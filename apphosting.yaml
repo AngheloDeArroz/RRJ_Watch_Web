@@ -1,0 +1,55 @@
+# Settings for Backend (on Cloud Run)
+runConfig:
+  minInstances: 0          # Scales to zero when idle (saves cost)
+  maxInstances: 10         # Prevents runaway scaling
+  cpu: 1                   # One vCPU per instance
+  memoryMiB: 512           # Enough for most Next.js apps
+
+# Environment variables and secrets
+env:
+  #  Public Firebase configuration (safe to expose)
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyCmqtyOglEUcpGgFTWu6ZzDwu5qaXM-Kqg
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: capstone-a97ad.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: capstone-a97ad
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: capstone-a97ad.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: 626467171022
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:626467171022:web:4136a0f77e326680e0fe9f
+    availability:
+      - BUILD
+      - RUNTIME
+
+
+  - variable: NODE_ENV
+    value: production
+    availability:
+      - BUILD
+      - RUNTIME
+
+
+
