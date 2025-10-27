@@ -169,7 +169,7 @@ export function HistoricalLogsCard({
 
           {!isLoading && historicalData.length > 0 && (
             <div className="space-y-4 py-2">
-              {historicalData.map((entry) => {
+              {[...historicalData].reverse().map((entry) => {
                 const wasPhTriggered =
                   entry.phSolutionLevelStartOfDay !== undefined &&
                   entry.phSolutionLevelEndOfDay !== undefined &&

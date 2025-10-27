@@ -220,7 +220,11 @@ export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCard
             <h4 className="text-xs font-medium">Est. Remaining</h4>
           </div>
           <div className="text-xl font-bold text-foreground">
-            {daysRemaining === null ? "Not consumed" : `${daysRemaining} days`}
+            {level === 0
+              ? "Please refill"
+              : daysRemaining === null
+              ? "Not consumed"
+              : `${daysRemaining} days`}
           </div>
         </div>
       </div>

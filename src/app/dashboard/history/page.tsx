@@ -67,7 +67,7 @@ export default function HistoryPage() {
       
       try {
         const historyCollectionRef = collection(db, "water-history");
-        const q = query(historyCollectionRef, orderBy("timestamp", "desc"), limit(7));
+        const q = query(historyCollectionRef, orderBy("timestamp", "asc"), limit(7));
         const querySnapshot = await getDocs(q);
         
         const fetchedEntries: HistoricalEntry[] = querySnapshot.docs.map(docSnap => {
