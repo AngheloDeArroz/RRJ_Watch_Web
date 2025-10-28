@@ -31,9 +31,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        {/* Sidebar */}
-        <Sidebar>
-          <SidebarHeader className="p-4">
+        {/* Sidebar - wrapper */}
+        <Sidebar className="bg-white text-gray-900 dark:bg-zinc-900 dark:text-gray-100 shadow-md">
+          {/* SidebarHeader - force opaque white background */}
+          <SidebarHeader className="p-4 bg-white text-gray-900 dark:bg-zinc-900 dark:text-gray-100">
             <div className="flex items-center justify-between gap-2">
               <a
                 href="#"
@@ -60,14 +61,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </SidebarHeader>
 
-          <SidebarContent>
-            <div className="border-t border-border/30 mb-2"></div>
+          {/* SidebarContent - force opaque white background and remove backdrop blur/transparency */}
+          <SidebarContent className="bg-white text-gray-900 dark:bg-zinc-900 dark:text-gray-100 shadow-none border-r border-border/30">
+            <div className="border-t border-border/30 mb-2" />
             <SidebarMenu>
               <SidebarNav />
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter>
+          {/* SidebarFooter - force opaque background */}
+          <SidebarFooter className="bg-white text-gray-900 dark:bg-zinc-900 dark:text-gray-100">
             <SidebarMenu>
               <SidebarMenuItem>
                 <Button
