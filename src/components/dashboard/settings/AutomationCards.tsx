@@ -14,14 +14,11 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Clock,
   Power,
-  X,
-  AlertTriangle,
-  Weight,
   Pencil,
   Droplets,
   Settings,
@@ -63,164 +60,196 @@ const scheduleFormSchema = z.object({
     }),
   grams: z
     .coerce.number()
-    .min(1, "Grams must be at least 1.")
-    .max(500, "Grams cannot exceed 500."),
+    .min(5, "Minimum 5 grams required.")
+    .max(400, "Maximum allowed is 400 grams.")
+    .refine((val) => val % 5 === 0, {
+      message: "Grams must be in multiples of 5.",
+    }),
 });
+
 type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
 
-export function AutomationControlCard({ className, ...props }: ComponentProps<typeof Card>) {
+export function AutomationControlCard({
+  className,
+  ...props
+}: ComponentProps<typeof Card>) {
   const { toast } = useToast();
 
-  const [feedingLoading, setFeedingLoading] = useState(true);
-  const [feedingError, setFeedingError] = useState<string | null>(null);
   const [feedingEnabled, setFeedingEnabled] = useState(false);
+  const [feedingLoading, setFeedingLoading] = useState(true);
+  const [phEnabled, setPhEnabled] = useState(false);
+  const [phLoading, setPhLoading] = useState(true);
+  const [foodLevel, setFoodLevel] = useState<number>(0);
+  const [phSolutionLevel, setPhSolutionLevel] = useState<number>(0);
+
   const [schedules, setSchedules] = useState([
     { id: "feedingTime1", time: "", gramsId: "feedingGrams1", grams: 0 },
     { id: "feedingTime2", time: "", gramsId: "feedingGrams2", grams: 0 },
   ]);
   const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
-  const [feedingLastTriggered, setFeedingLastTriggered] = useState<Timestamp | null>(null);
-
-  const [phLoading, setPhLoading] = useState(true);
-  const [phError, setPhError] = useState<string | null>(null);
-  const [phEnabled, setPhEnabled] = useState(false);
-  const [phLastTriggered, setPhLastTriggered] = useState<Timestamp | null>(null);
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
-    defaultValues: { time: "", grams: 0 },
+    defaultValues: { time: "", grams: 5 },
   });
 
   const formatTime = (t: any) =>
     t instanceof Timestamp ? format(t.toDate(), "hh:mm a") : "";
 
+  // Firestore listeners
   useEffect(() => {
     const statusRef = doc(db, "settings", "status");
-    const unsubStatus = onSnapshot(
-      statusRef,
-      (snap) => {
-        if (snap.exists()) {
-          const d = snap.data();
-          setFeedingEnabled(d.feedingEnabled === true);
-          setPhEnabled(d.phBalancerEnabled === true);
-          setSchedules([
-            {
-              id: "feedingTime1",
-              time: formatTime(d.feedingTime1),
-              gramsId: "feedingGrams1",
-              grams: d.feedingGrams1 ?? 0,
-            },
-            {
-              id: "feedingTime2",
-              time: formatTime(d.feedingTime2),
-              gramsId: "feedingGrams2",
-              grams: d.feedingGrams2 ?? 0,
-            },
-          ]);
-          setFeedingError(null);
-          setPhError(null);
-        } else {
-          setFeedingError("Settings not found.");
-          setPhError("Settings not found.");
-        }
-        setFeedingLoading(false);
-        setPhLoading(false);
-      },
-      (e) => {
-        console.error(e);
-        setFeedingError("Failed to fetch settings.");
-        setPhError("Failed to fetch settings.");
-        setFeedingLoading(false);
-        setPhLoading(false);
-      }
-    );
-
-    const triggeredRef = doc(db, "settings", "triggered");
-    const unsubTriggered = onSnapshot(triggeredRef, (snap) => {
+    const unsubSettings = onSnapshot(statusRef, (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        setFeedingLastTriggered(d.feedingLastTriggered ?? null);
-        setPhLastTriggered(d.phLastTriggered ?? null);
+        setFeedingEnabled(d.feedingEnabled ?? false);
+        setPhEnabled(d.phBalancerEnabled ?? false);
+        setSchedules([
+          {
+            id: "feedingTime1",
+            time: formatTime(d.feedingTime1),
+            gramsId: "feedingGrams1",
+            grams: d.feedingGrams1 ?? 0,
+          },
+          {
+            id: "feedingTime2",
+            time: formatTime(d.feedingTime2),
+            gramsId: "feedingGrams2",
+            grams: d.feedingGrams2 ?? 0,
+          },
+        ]);
+      }
+      setFeedingLoading(false);
+      setPhLoading(false);
+    });
+
+    const levelsRef = doc(db, "container-levels", "status");
+    const unsubLevels = onSnapshot(levelsRef, (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setFoodLevel(d.foodLevel ?? 0);
+        setPhSolutionLevel(d.phSolutionLevel ?? 0);
       }
     });
 
     return () => {
-      unsubStatus();
-      unsubTriggered();
+      unsubSettings();
+      unsubLevels();
     };
   }, []);
 
   const toggleFeeding = async (val: boolean) => {
-    const ref = doc(db, "settings", "status");
-    const updates: any = { feedingEnabled: val };
-    if (!val) {
-      Object.assign(updates, {
-        feedingTime1: deleteField(),
-        feedingGrams1: deleteField(),
-        feedingTime2: deleteField(),
-        feedingGrams2: deleteField(),
-      });
-    }
-    await updateDoc(ref, updates);
+    await updateDoc(doc(db, "settings", "status"), {
+      feedingEnabled: val,
+      ...(val
+        ? {}
+        : {
+            feedingTime1: deleteField(),
+            feedingTime2: deleteField(),
+            feedingGrams1: deleteField(),
+            feedingGrams2: deleteField(),
+          }),
+    });
     toast({
-      title: "Success",
-      description: val
-        ? "Feeding enabled."
-        : "Feeding disabled and schedules cleared.",
+      title: val ? "Feeding enabled" : "Feeding disabled",
     });
   };
 
-  const openEditDialog = (schedule: any) => {
-    setEditingSchedule(schedule);
+  const togglePhBalancer = async (val: boolean) => {
+    if (val && phSolutionLevel <= 0) {
+      toast({
+        title: "Please fill your pH balancer with solution",
+        variant: "destructive",
+      });
+      return;
+    }
+    await updateDoc(doc(db, "settings", "status"), {
+      phBalancerEnabled: val,
+    });
+    toast({
+      title: val ? "pH balancer enabled" : "pH balancer disabled",
+    });
+  };
+
+  const openEditDialog = (s: any) => {
+    setEditingSchedule(s);
     let t24 = "";
-    if (schedule.time) {
-      const [time, mod] = schedule.time.split(" ");
+    if (s.time) {
+      const [time, mod] = s.time.split(" ");
       let [h, m] = time.split(":");
       if (h === "12") h = "00";
       if (mod === "PM") h = (parseInt(h) + 12).toString();
       t24 = `${h.padStart(2, "0")}:${m}`;
     }
-    form.reset({ time: t24, grams: schedule.grams });
+    form.reset({ time: t24, grams: s.grams });
   };
 
   const saveSchedule: SubmitHandler<ScheduleFormValues> = async (data) => {
     if (!editingSchedule) return;
+
+    const currentFood = (foodLevel / 100) * 400;
+    if (currentFood <= 0) {
+      toast({
+        title: "Please fill your food container",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Calculate total grams after this edit
+    const totalPlanned = schedules.reduce((sum, s) => {
+      if (s.id === editingSchedule.id) return sum + data.grams; // new grams for edited one
+      return sum + (s.grams || 0);
+    }, 0);
+
+    if (totalPlanned > currentFood) {
+      toast({
+        title: `Set less. The total feeding amount (${totalPlanned}g) exceeds container's food (${currentFood.toFixed(0)}g).`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const [h, m] = data.time.split(":").map(Number);
     const date = new Date();
     date.setHours(h, m, 0, 0);
+
+    // Check for duplicate time
+    const t24 = `${h.toString().padStart(2, "0")}:${m
+      .toString()
+      .padStart(2, "0")}`;
+    const isDuplicate = schedules.some(
+      (s) =>
+        s.id !== editingSchedule.id &&
+        s.time &&
+        (() => {
+          const [otime, mod] = s.time.split(" ");
+          let [oh, om] = otime.split(":");
+          if (oh === "12") oh = "00";
+          if (mod === "PM") oh = (parseInt(oh) + 12).toString();
+          return `${oh.padStart(2, "0")}:${om}` === t24;
+        })()
+    );
+
+    if (isDuplicate) {
+      form.setError("time", {
+        type: "manual",
+        message: "Cannot set two feeding schedules at the same time.",
+      });
+      return;
+    }
+
     const t12 = format(date, "hh:mm a");
-    const ref = doc(db, "settings", "status");
-    const updates = {
+    await updateDoc(doc(db, "settings", "status"), {
       [editingSchedule.id]: Timestamp.fromDate(date),
       [editingSchedule.gramsId]: data.grams,
-    };
-    await updateDoc(ref, updates);
+    });
+
     toast({
-      title: "Updated",
+      title: "Schedule updated",
       description: `Feeding at ${t12} for ${data.grams}g.`,
     });
     setEditingSchedule(null);
-  };
-
-  const clearSchedule = async (s: any, e: any) => {
-    e.stopPropagation();
-    const ref = doc(db, "settings", "status");
-    await updateDoc(ref, {
-      [s.id]: deleteField(),
-      [s.gramsId]: deleteField(),
-    });
-    toast({ title: "Cleared", description: "Schedule removed." });
-  };
-
-  const togglePhBalancer = async (val: boolean) => {
-    const ref = doc(db, "settings", "status");
-    await updateDoc(ref, { phBalancerEnabled: val });
-    toast({
-      title: "Success",
-      description: val
-        ? "pH balancer enabled."
-        : "pH balancer disabled.",
-    });
   };
 
   return (
@@ -228,158 +257,101 @@ export function AutomationControlCard({ className, ...props }: ComponentProps<ty
       <Card
         className={cn(
           "w-full h-full bg-card/40 backdrop-blur-md rounded-2xl shadow-md p-6",
-          "text-sm md:text-base lg:text-lg xl:text-xl transition-all duration-300",
           className
         )}
         {...props}
       >
         <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-xl md:text-2xl font-semibold">
-            <Clock className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+          <CardTitle className="flex items-center gap-3 text-xl font-semibold">
+            <Clock className="w-6 h-6 text-primary" />
             Automation Controls
           </CardTitle>
-          <CardDescription className="text-sm md:text-base">
+          <CardDescription>
             Manage automated feeding and pH balancing systems.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-y-auto pr-2">
-          <div className="flex flex-col md:flex-row gap-6 w-full">
-            {/* Feeding Section */}
-            <div className="flex-1 w-full">
-              <h3 className="text-base md:text-lg font-semibold flex items-center gap-2 mb-2">
-                <Settings className="w-5 h-5 text-primary" /> Automated Feeding
-              </h3>
+        <CardContent className="flex gap-6 flex-col md:flex-row">
+          {/* Feeding Section */}
+          <div className="flex-1">
+            <h3 className="font-semibold flex items-center gap-2 mb-2">
+              <Settings className="w-5 h-5 text-primary" /> Automated Feeding
+            </h3>
 
-              {feedingError && (
-                <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-5 h-5" /> {feedingError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md">
-                <Label className="flex items-center gap-2 text-sm md:text-base font-medium">
-                  <Power className="w-5 h-5 text-primary" /> System Status
-                </Label>
-                {feedingLoading ? (
-                  <Skeleton className="h-6 w-11" />
-                ) : (
-                  <Switch
-                    checked={feedingEnabled}
-                    onCheckedChange={toggleFeeding}
-                  />
-                )}
-              </div>
-
-              {feedingEnabled && !feedingLoading && (
-                <div className="space-y-3 pt-3">
-                  {schedules.map((s, i) => (
-                    <div
-                      key={s.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-secondary/50 cursor-pointer transition-colors"
-                      onClick={() => openEditDialog(s)}
-                    >
-                      <div>
-                        <p className="font-medium text-sm md:text-base">
-                          Schedule {i + 1}
-                        </p>
-                        {s.time ? (
-                          <p className="text-xs md:text-sm text-muted-foreground">
-                            <Clock className="inline w-3 h-3 mr-1" /> {s.time}{" "}
-                            <Weight className="inline w-3 h-3 ml-3 mr-1" />{" "}
-                            {s.grams > 0 ? `${s.grams}g` : "Not set"}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground italic">
-                            Not set
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="h-8 w-8 flex items-center justify-center">
-                          <Pencil className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        {s.time && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => clearSchedule(s, e)}
-                            className="h-8 w-8 text-destructive/70 hover:text-destructive"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {feedingLastTriggered && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Last triggered: {format(feedingLastTriggered.toDate(), "PPpp")}
-                </p>
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md">
+              <Label className="flex items-center gap-2">
+                <Power className="w-5 h-5 text-primary" /> System Status
+              </Label>
+              {feedingLoading ? (
+                <Skeleton className="h-6 w-11" />
+              ) : (
+                <Switch
+                  checked={feedingEnabled}
+                  onCheckedChange={toggleFeeding}
+                />
               )}
             </div>
 
-            <div className="hidden md:block w-px bg-border" />
-
-            {/* pH Balancer Section */}
-            <div className="flex-1 w-full">
-              <h3 className="text-base md:text-lg font-semibold flex items-center gap-2 mb-2">
-                <Droplets className="w-5 h-5 text-primary" /> pH Balancer
-              </h3>
-
-              {phError && (
-                <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-5 h-5" /> {phError}
+            {feedingEnabled &&
+              schedules.map((s, i) => (
+                <div
+                  key={s.id}
+                  className="flex justify-between items-center p-3 mt-3 border rounded-md hover:bg-secondary/50 cursor-pointer"
+                  onClick={() => openEditDialog(s)}
+                >
+                  <div>
+                    <p className="font-medium">Schedule {i + 1}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {s.time || "Not set"}{" "}
+                      {s.grams ? `• ${s.grams}g` : "• Not set"}
+                    </p>
+                  </div>
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
                 </div>
-              )}
+              ))}
+          </div>
 
-              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md">
-                <Label className="flex items-center gap-2 text-sm md:text-base font-medium">
-                  <Power className="w-5 h-5 text-primary" /> System Status
-                </Label>
-                {phLoading ? (
-                  <Skeleton className="h-6 w-11" />
-                ) : (
-                  <Switch
-                    checked={phEnabled}
-                    onCheckedChange={togglePhBalancer}
-                  />
-                )}
-              </div>
+          <div className="hidden md:block w-px bg-border" />
 
-              {!phLoading && (
-                <p className="text-xs md:text-sm text-center text-muted-foreground pt-2">
-                  {phEnabled
-                    ? "System maintains optimal pH automatically."
-                    : "Balancer is off. Manual monitoring is required."}
-                </p>
-              )}
+          {/* pH Balancer Section */}
+          <div className="flex-1">
+            <h3 className="font-semibold flex items-center gap-2 mb-2">
+              <Droplets className="w-5 h-5 text-primary" /> pH Balancer
+            </h3>
 
-              {phLastTriggered && (
-                <p className="text-xs text-muted-foreground text-center mt-1">
-                  Last triggered: {format(phLastTriggered.toDate(), "PPpp")}
-                </p>
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md">
+              <Label className="flex items-center gap-2">
+                <Power className="w-5 h-5 text-primary" /> System Status
+              </Label>
+              {phLoading ? (
+                <Skeleton className="h-6 w-11" />
+              ) : (
+                <Switch
+                  checked={phEnabled}
+                  onCheckedChange={togglePhBalancer}
+                />
               )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Dialog open={!!editingSchedule} onOpenChange={(o) => !o && setEditingSchedule(null)}>
+      {/* Edit Feeding Dialog */}
+      <Dialog
+        open={!!editingSchedule}
+        onOpenChange={(o) => !o && setEditingSchedule(null)}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Feeding Schedule</DialogTitle>
             <DialogDescription>
-              Set the time and amount for this schedule.
+              Set the time and amount (grams).
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(saveSchedule)}
-              className="space-y-4 py-4"
+              className="space-y-4"
             >
               <FormField
                 control={form.control}
@@ -388,7 +360,11 @@ export function AutomationControlCard({ className, ...props }: ComponentProps<ty
                   <FormItem>
                     <FormLabel>Time</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <input
+                        type="time"
+                        {...field}
+                        className="w-full p-2 rounded-md border"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -400,18 +376,21 @@ export function AutomationControlCard({ className, ...props }: ComponentProps<ty
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Amount (grams)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 5" {...field} />
-                    </FormControl>
+                    <Slider
+                      min={5}
+                      max={400}
+                      step={5}
+                      value={[field.value]}
+                      onValueChange={(v) => field.onChange(v[0])}
+                    />
+                    <p className="text-sm text-center mt-2">{field.value}g</p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="secondary">
-                    Cancel
-                  </Button>
+                  <Button variant="secondary">Cancel</Button>
                 </DialogClose>
                 <Button type="submit">Save</Button>
               </DialogFooter>

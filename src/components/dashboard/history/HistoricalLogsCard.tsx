@@ -10,18 +10,25 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, WifiOff, Clock, Droplets, Percent, Download } from "lucide-react";
+import {
+  FileText,
+  WifiOff,
+  Clock,
+  Droplets,
+  Percent,
+  Thermometer,
+  Waves,
+  Beaker,
+  Download,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HistoricalEntry } from "@/app/dashboard/history/page";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// Fixed version - visible in both light and dark mode
 const ContainerLevelBar = ({ start, end }: { start?: number; end?: number }) => {
   if (start === undefined || end === undefined) {
-    return (
-      <span className="text-muted-foreground/70 italic text-xs">N/A</span>
-    );
+    return <span className="text-muted-foreground/70 italic text-xs">N/A</span>;
   }
 
   const startLevel = Math.max(0, Math.min(100, start));
@@ -29,15 +36,11 @@ const ContainerLevelBar = ({ start, end }: { start?: number; end?: number }) => 
 
   return (
     <div className="w-full h-5 bg-secondary rounded-md overflow-hidden relative border border-border/50">
-      {/* End Level (bottom layer) */}
       <div className="h-full bg-primary/30" style={{ width: `${startLevel}%` }} />
-      {/* Start Level (top layer, reveals end level underneath) */}
       <div
         className="absolute top-0 left-0 h-full bg-primary"
         style={{ width: `${endLevel}%` }}
       />
-
-      {/* Text Labels */}
       <div className="absolute inset-0 flex items-center justify-between px-2 text-xs font-semibold">
         <span
           className="text-black dark:text-white drop-shadow-sm"
@@ -79,9 +82,11 @@ export function HistoricalLogsCard({
 
   const downloadPDF = () => {
     const doc = new jsPDF();
-
     const tableColumn = [
       "Date",
+      "Temperature (°C)",
+      "Turbidity (NTU)",
+      "pH",
       "Feeding Status",
       "Feeding Times",
       "pH Balancer Status",
@@ -94,6 +99,9 @@ export function HistoricalLogsCard({
 
     const tableRows: (string | number)[][] = historicalData.map((entry) => [
       entry.date,
+      entry.waterQuality?.temp ?? "N/A",
+      entry.waterQuality?.turbidity ?? "N/A",
+      entry.waterQuality?.ph ?? "N/A",
       entry.isAutoFeedingEnabledToday ? "Enabled" : "Disabled",
       entry.feedingSchedules.length > 0
         ? entry.feedingSchedules.join(", ")
@@ -128,10 +136,9 @@ export function HistoricalLogsCard({
           <FileText className="w-5 h-5 text-primary" /> Daily Logs
         </CardTitle>
         <CardDescription>
-          A day-by-day record of system activities.
+          A day-by-day record of system activities and water quality.
         </CardDescription>
 
-        {/* Download button positioned top-right */}
         <button
           className="absolute top-3 right-3 flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded bg-primary text-white hover:bg-primary/90"
           onClick={downloadPDF}
@@ -178,9 +185,35 @@ export function HistoricalLogsCard({
                 return (
                   <Card key={entry.date} className="shadow-sm bg-secondary/30">
                     <CardContent className="space-y-3 p-3 text-sm">
-                      <p className="font-headline mb-2 font-semibold">
+                      {/* Date */}
+                      <p className="font-headline mb-1 font-semibold">
                         {entry.date}
                       </p>
+
+                      {/* Water Quality directly below date */}
+                      <div className="grid grid-cols-3 text-center text-xs text-muted-foreground mb-3">
+                        <div className="flex flex-col items-center">
+                          <Thermometer className="w-3 h-3 mb-1" />
+                          <span>Temp</span>
+                          <span className="font-semibold text-foreground">
+                            {entry.waterQuality?.temp ?? "N/A"}°C
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <Waves className="w-3 h-3 mb-1" />
+                          <span>Turbidity</span>
+                          <span className="font-semibold text-foreground">
+                            {entry.waterQuality?.turbidity ?? "N/A"} NTU
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <Beaker className="w-3 h-3 mb-1" />
+                          <span>pH</span>
+                          <span className="font-semibold text-foreground">
+                            {entry.waterQuality?.ph ?? "N/A"}
+                          </span>
+                        </div>
+                      </div>
 
                       {/* Feeding Section */}
                       <div>

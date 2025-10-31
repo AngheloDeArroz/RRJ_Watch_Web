@@ -199,6 +199,13 @@ export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCard
   }) => {
     const percentage = Math.min(Math.max(level, 0), 100);
     const color = theme === "orange" ? "#fb923c" : "#38bdf8";
+
+    // Convert level to approximate quantity
+    const approximate =
+      theme === "orange"
+        ? ((percentage / 100) * 400).toFixed(0) + " g"
+        : ((percentage / 100) * 2).toFixed(2) + " L";
+
     return (
       <div className="flex flex-col items-center gap-4 w-full">
         <div className="flex flex-col items-center gap-1 h-10">
@@ -206,6 +213,9 @@ export function ContainerLevelsCard({ className, ...props }: ContainerLevelsCard
             <Icon className="w-5 h-5 text-muted-foreground" />
             <p className="text-lg font-bold text-foreground">{percentage}%</p>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Approx. {approximate}
+          </p>
         </div>
 
         <div className="relative w-24 h-48 rounded-[2rem] overflow-hidden shadow-md border-4 border-gray-400 bg-slate-50">

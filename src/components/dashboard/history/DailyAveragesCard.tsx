@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, type ComponentProps } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Thermometer, Waves, Beaker, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +25,12 @@ interface Average {
   Icon: React.ElementType;
 }
 
-export function DailyAveragesCard({ historicalData, error, className, ...props }: DailyAveragesCardProps) {
+export function DailyAveragesCard({
+  historicalData,
+  error,
+  className,
+  ...props
+}: DailyAveragesCardProps) {
   const isLoading = historicalData.length === 0 && !error;
 
   const averages: Average[] = useMemo(() => {
@@ -31,12 +42,15 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
       ];
     }
 
-    const sum = historicalData.reduce((acc, entry) => {
-      acc.temp += parseFloat(entry.waterQuality.temp) || 0;
-      acc.turbidity += parseFloat(entry.waterQuality.turbidity) || 0;
-      acc.ph += parseFloat(entry.waterQuality.ph) || 0;
-      return acc;
-    }, { temp: 0, turbidity: 0, ph: 0 });
+    const sum = historicalData.reduce(
+      (acc, entry) => {
+        acc.temp += parseFloat(entry.waterQuality.temp) || 0;
+        acc.turbidity += parseFloat(entry.waterQuality.turbidity) || 0;
+        acc.ph += parseFloat(entry.waterQuality.ph) || 0;
+        return acc;
+      },
+      { temp: 0, turbidity: 0, ph: 0 }
+    );
 
     const count = historicalData.length;
 
@@ -49,23 +63,25 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
 
   const evaluateMetric = (label: string, value: string) => {
     const num = parseFloat(value);
-    if (isNaN(num)) return { status: "nodata", color: "text-gray-400", text: "--" };
+    if (isNaN(num)) return { color: "text-gray-400", text: "--" };
 
     switch (label) {
       case "Temp":
-        if (num >= 24 && num <= 28) return { status: "good", color: "text-blue-400", text: "Good" };
-        if (num >= 20 && num < 24 || num > 28 && num <= 32) return { status: "moderate", color: "text-yellow-400", text: "Moderate" };
-        return { status: "bad", color: "text-red-500", text: "Bad" };
+        if (num >= 24 && num <= 28) return { color: "text-blue-400", text: "Good" };
+        if ((num >= 20 && num < 24) || (num > 28 && num <= 32))
+          return { color: "text-yellow-400", text: "Moderate" };
+        return { color: "text-red-500", text: "Bad" };
       case "Turbidity":
-        if (num <= 5) return { status: "good", color: "text-blue-400", text: "Good" };
-        if (num <= 10) return { status: "moderate", color: "text-yellow-400", text: "Moderate" };
-        return { status: "bad", color: "text-red-500", text: "Bad" };
+        if (num <= 5) return { color: "text-blue-400", text: "Good" };
+        if (num <= 10) return { color: "text-yellow-400", text: "Moderate" };
+        return { color: "text-red-500", text: "Bad" };
       case "pH":
-        if (num >= 6.5 && num <= 8.5) return { status: "good", color: "text-blue-400", text: "Good" };
-        if (num >= 6 && num < 6.5 || num > 8.5 && num <= 9) return { status: "moderate", color: "text-yellow-400", text: "Moderate" };
-        return { status: "bad", color: "text-red-500", text: "Bad" };
+        if (num >= 6.5 && num <= 8.5) return { color: "text-blue-400", text: "Good" };
+        if ((num >= 6 && num < 6.5) || (num > 8.5 && num <= 9))
+          return { color: "text-yellow-400", text: "Moderate" };
+        return { color: "text-red-500", text: "Bad" };
       default:
-        return { status: "nodata", color: "text-gray-400", text: "--" };
+        return { color: "text-gray-400", text: "--" };
     }
   };
 
@@ -76,37 +92,49 @@ export function DailyAveragesCard({ historicalData, error, className, ...props }
           <Scale className="w-5 h-5 text-primary" />
           7-Day Averages
         </CardTitle>
-        <CardDescription>Average water quality readings over the last week.</CardDescription>
+        <CardDescription>
+          Average water quality readings over the last week.
+        </CardDescription>
       </CardHeader>
 
       <CardContent>
         {isLoading ? (
-          <div className="flex gap-4">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex-1 p-4 rounded-lg bg-secondary/40 flex flex-col items-center justify-center space-y-2">
-                <Skeleton className="h-6 w-24 mb-1" />
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-4 w-20" />
+              <div
+                key={i}
+                className="flex flex-col items-center justify-center bg-secondary/40 rounded-lg p-3 sm:p-4 space-y-2 text-center"
+              >
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-4 w-16" />
               </div>
             ))}
           </div>
         ) : error ? (
-          <p className="text-sm text-destructive flex items-center gap-2">{error}</p>
+          <p className="text-sm text-destructive flex items-center gap-2">
+            {error}
+          </p>
         ) : (
-          <div className="flex gap-4">
-            {averages.map(avg => {
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            {averages.map((avg) => {
               const evalMetric = evaluateMetric(avg.label, avg.value);
               return (
-                <div key={avg.label} className="flex-1 p-4 rounded-lg bg-secondary/40 text-center shadow-inner flex flex-col items-center">
-                  <div className="flex justify-center items-center gap-2 mb-2 text-muted-foreground">
-                    <avg.Icon className="w-4 h-4" />
-                    <h4 className="text-sm font-medium">{avg.label}</h4>
+                <div
+                  key={avg.label}
+                  className="flex flex-col items-center justify-center bg-secondary/40 rounded-lg p-3 sm:p-4 text-center shadow-inner"
+                >
+                  <div className="flex justify-center items-center gap-1 sm:gap-2 mb-1 text-muted-foreground text-xs sm:text-sm">
+                    <avg.Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <h4 className="font-medium">{avg.label}</h4>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-lg sm:text-2xl font-bold text-foreground">
                     {avg.value}
-                    <span className="text-base font-normal text-muted-foreground ml-1">{avg.unit}</span>
+                    <span className="text-xs sm:text-base font-normal text-muted-foreground ml-1">
+                      {avg.unit}
+                    </span>
                   </p>
-                  <p className={cn("mt-1 text-sm font-medium", evalMetric.color)}>
+                  <p className={cn("mt-1 text-xs sm:text-sm font-medium", evalMetric.color)}>
                     {evalMetric.text}
                   </p>
                 </div>
