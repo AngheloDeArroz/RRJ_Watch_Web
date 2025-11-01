@@ -72,8 +72,8 @@ export function DailyAveragesCard({
           return { color: "text-yellow-400", text: "Moderate" };
         return { color: "text-red-500", text: "Bad" };
       case "Turbidity":
-        if (num <= 5) return { color: "text-blue-400", text: "Good" };
-        if (num <= 10) return { color: "text-yellow-400", text: "Moderate" };
+        if (num <= 10) return { color: "text-blue-400", text: "Good" };
+        if (num <= 40) return { color: "text-yellow-400", text: "Moderate" };
         return { color: "text-red-500", text: "Bad" };
       case "pH":
         if (num >= 6.5 && num <= 8.5) return { color: "text-blue-400", text: "Good" };

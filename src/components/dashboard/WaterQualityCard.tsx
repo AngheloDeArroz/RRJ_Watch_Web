@@ -35,7 +35,7 @@ interface WaterQualityParam {
 
 const PARAMETER_RANGES = {
   temp: { min: 22, max: 28 },
-  turbidity: { min: 0, max: 10 },
+  turbidity: { min: 0, max: 40 },
   ph: { min: 6.5, max: 7.5 },
 };
 

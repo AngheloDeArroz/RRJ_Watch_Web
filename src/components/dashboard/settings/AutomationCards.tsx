@@ -16,13 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Clock,
-  Power,
-  Pencil,
-  Droplets,
-  Settings,
-} from "lucide-react";
+import { Clock, Power, Pencil, Droplets, Settings, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +76,10 @@ export function AutomationControlCard({
   const [foodLevel, setFoodLevel] = useState<number>(0);
   const [phSolutionLevel, setPhSolutionLevel] = useState<number>(0);
 
+  const [feedingLastTriggered, setFeedingLastTriggered] =
+    useState<string | null>(null);
+  const [phLastTriggered, setPhLastTriggered] = useState<string | null>(null);
+
   const [schedules, setSchedules] = useState([
     { id: "feedingTime1", time: "", gramsId: "feedingGrams1", grams: 0 },
     { id: "feedingTime2", time: "", gramsId: "feedingGrams2", grams: 0 },
@@ -96,7 +94,15 @@ export function AutomationControlCard({
   const formatTime = (t: any) =>
     t instanceof Timestamp ? format(t.toDate(), "hh:mm a") : "";
 
-  // Firestore listeners
+  const updateTriggeredTimestamp = async (type: "feeding" | "ph") => {
+    const ref = doc(db, "settings", "triggered");
+    const field =
+      type === "feeding" ? "feedingLastTriggered" : "phLastTriggered";
+    await updateDoc(ref, {
+      [field]: Timestamp.now(),
+    });
+  };
+
   useEffect(() => {
     const statusRef = doc(db, "settings", "status");
     const unsubSettings = onSnapshot(statusRef, (snap) => {
@@ -124,19 +130,44 @@ export function AutomationControlCard({
     });
 
     const levelsRef = doc(db, "container-levels", "status");
-    const unsubLevels = onSnapshot(levelsRef, (snap) => {
+    const unsubLevels = onSnapshot(levelsRef, async (snap) => {
       if (snap.exists()) {
         const d = snap.data();
+        const newPhLevel = d.phSolutionLevel ?? 0;
+
         setFoodLevel(d.foodLevel ?? 0);
-        setPhSolutionLevel(d.phSolutionLevel ?? 0);
+        setPhSolutionLevel(newPhLevel);
+
+        if (newPhLevel <= 0 && phEnabled) {
+          await updateDoc(doc(db, "settings", "status"), {
+            phBalancerEnabled: false,
+          });
+          toast({
+            title: "pH Balancer turned off automatically",
+            description: "pH solution is empty.",
+            variant: "destructive",
+          });
+        }
+      }
+    });
+
+    const triggeredRef = doc(db, "settings", "triggered");
+    const unsubTriggered = onSnapshot(triggeredRef, (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        if (d.feedingLastTriggered instanceof Timestamp)
+          setFeedingLastTriggered(format(d.feedingLastTriggered.toDate(), "PPpp"));
+        if (d.phLastTriggered instanceof Timestamp)
+          setPhLastTriggered(format(d.phLastTriggered.toDate(), "PPpp"));
       }
     });
 
     return () => {
       unsubSettings();
       unsubLevels();
+      unsubTriggered();
     };
-  }, []);
+  }, [phEnabled]);
 
   const toggleFeeding = async (val: boolean) => {
     await updateDoc(doc(db, "settings", "status"), {
@@ -150,6 +181,9 @@ export function AutomationControlCard({
             feedingGrams2: deleteField(),
           }),
     });
+
+    if (val) await updateTriggeredTimestamp("feeding");
+
     toast({
       title: val ? "Feeding enabled" : "Feeding disabled",
     });
@@ -163,9 +197,13 @@ export function AutomationControlCard({
       });
       return;
     }
+
     await updateDoc(doc(db, "settings", "status"), {
       phBalancerEnabled: val,
     });
+
+    if (val) await updateTriggeredTimestamp("ph");
+
     toast({
       title: val ? "pH balancer enabled" : "pH balancer disabled",
     });
@@ -196,9 +234,8 @@ export function AutomationControlCard({
       return;
     }
 
-    // Calculate total grams after this edit
     const totalPlanned = schedules.reduce((sum, s) => {
-      if (s.id === editingSchedule.id) return sum + data.grams; // new grams for edited one
+      if (s.id === editingSchedule.id) return sum + data.grams;
       return sum + (s.grams || 0);
     }, 0);
 
@@ -214,7 +251,6 @@ export function AutomationControlCard({
     const date = new Date();
     date.setHours(h, m, 0, 0);
 
-    // Check for duplicate time
     const t24 = `${h.toString().padStart(2, "0")}:${m
       .toString()
       .padStart(2, "0")}`;
@@ -248,6 +284,20 @@ export function AutomationControlCard({
     toast({
       title: "Schedule updated",
       description: `Feeding at ${t12} for ${data.grams}g.`,
+    });
+    setEditingSchedule(null);
+  };
+
+  const deleteSchedule = async () => {
+    if (!editingSchedule) return;
+    await updateDoc(doc(db, "settings", "status"), {
+      [editingSchedule.id]: deleteField(),
+      [editingSchedule.gramsId]: deleteField(),
+    });
+    toast({
+      title: "Schedule deleted",
+      description: "The feeding schedule has been removed.",
+      variant: "destructive",
     });
     setEditingSchedule(null);
   };
@@ -291,6 +341,11 @@ export function AutomationControlCard({
                 />
               )}
             </div>
+            {feedingLastTriggered && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Last triggered: {feedingLastTriggered}
+              </p>
+            )}
 
             {feedingEnabled &&
               schedules.map((s, i) => (
@@ -332,6 +387,11 @@ export function AutomationControlCard({
                 />
               )}
             </div>
+            {phLastTriggered && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Last triggered: {phLastTriggered}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -345,7 +405,7 @@ export function AutomationControlCard({
           <DialogHeader>
             <DialogTitle>Edit Feeding Schedule</DialogTitle>
             <DialogDescription>
-              Set the time and amount (grams).
+              Set the time and amount (grams) or delete the schedule.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -388,11 +448,21 @@ export function AutomationControlCard({
                   </FormItem>
                 )}
               />
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="secondary">Cancel</Button>
-                </DialogClose>
-                <Button type="submit">Save</Button>
+              <DialogFooter className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={deleteSchedule}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </Button>
+                <div className="flex gap-2">
+                  <DialogClose asChild>
+                    <Button variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit">Save</Button>
+                </div>
               </DialogFooter>
             </form>
           </Form>
