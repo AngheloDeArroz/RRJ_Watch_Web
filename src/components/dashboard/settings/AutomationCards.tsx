@@ -94,14 +94,6 @@ export function AutomationControlCard({
   const formatTime = (t: any) =>
     t instanceof Timestamp ? format(t.toDate(), "hh:mm a") : "";
 
-  const updateTriggeredTimestamp = async (type: "feeding" | "ph") => {
-    const ref = doc(db, "settings", "triggered");
-    const field =
-      type === "feeding" ? "feedingLastTriggered" : "phLastTriggered";
-    await updateDoc(ref, {
-      [field]: Timestamp.now(),
-    });
-  };
 
   useEffect(() => {
     const statusRef = doc(db, "settings", "status");
@@ -182,8 +174,6 @@ export function AutomationControlCard({
           }),
     });
 
-    if (val) await updateTriggeredTimestamp("feeding");
-
     toast({
       title: val ? "Feeding enabled" : "Feeding disabled",
     });
@@ -201,8 +191,6 @@ export function AutomationControlCard({
     await updateDoc(doc(db, "settings", "status"), {
       phBalancerEnabled: val,
     });
-
-    if (val) await updateTriggeredTimestamp("ph");
 
     toast({
       title: val ? "pH balancer enabled" : "pH balancer disabled",
